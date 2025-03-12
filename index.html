@@ -60,64 +60,86 @@
     </div>
 
     <script>
-        const apiKey = 'uETlnux9_qgrdnVE/InRMmUTC'; // API Key (Visible for testing)
+    const apiKey = 'uETlnux9_qgrdnVE/InRMmUTC'; // Your API Key (Exposed in Frontend for Testing)
 
-        async function fetchCampaignNumbers() {
-            const resultTable = document.getElementById('result');
-            resultTable.innerHTML = `<tr><td colspan="5">Loading numbers...</td></tr>`;
+    async function fetchCampaignNumbers() {
+        const resultTable = document.getElementById('result');
+        resultTable.innerHTML = `<tr><td colspan="5">Loading numbers...</td></tr>`;
 
-            try {
-                // Step 1: Fetch numbers from the campaign API
-                const campaignResponse = await fetch(`https://api.numberverifier.com/api/getnumbers?access_key=${apiKey}`);
-                const campaignData = await campaignResponse.json();
+        try {
+            console.log("Fetching campaign numbers...");
 
-                if (!campaignData.numbers || campaignData.numbers.length === 0) {
-                    resultTable.innerHTML = `<tr><td colspan="5" style="color: red;">No numbers found in the campaign.</td></tr>`;
-                    return;
+            const response = await fetch(`https://api.numberverifier.com/api/getnumbers`, {
+                method: 'GET',
+                headers: {
+                    'x-apikey': apiKey // API Key must be in the header
                 }
+            });
 
-                resultTable.innerHTML = ""; // Clear loading message
-
-                // Step 2: Loop through each number and verify it
-                for (let number of campaignData.numbers) {
-                    await verifyNumber(number, resultTable);
-                }
-            } catch (error) {
-                console.error('Error fetching campaign numbers:', error);
-                resultTable.innerHTML = `<tr><td colspan="5" style="color: red;">Failed to fetch campaign numbers.</td></tr>`;
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
             }
-        }
 
-        async function verifyNumber(number, resultTable) {
-            try {
-                const verifyUrl = `https://api.numberverifier.com/api/validate?access_key=${apiKey}&number=${encodeURIComponent(number)}`;
-                const response = await fetch(verifyUrl);
-                const data = await response.json();
+            const campaignData = await response.json();
+            console.log("Campaign API Response:", campaignData);
 
-                let tMobileFlag = data.carrier.includes("T-Mobile") ? "🚩 Flagged" : "✅ Safe";
-                let verizonFlag = data.carrier.includes("Verizon") ? "🚩 Flagged" : "✅ Safe";
-                let attFlag = data.carrier.includes("AT&T") ? "🚩 Flagged" : "✅ Safe";
-
-                resultTable.innerHTML += `
-                    <tr>
-                        <td>${data.number}</td>
-                        <td>${data.carrier}</td>
-                        <td>${tMobileFlag}</td>
-                        <td>${verizonFlag}</td>
-                        <td>${attFlag}</td>
-                    </tr>
-                `;
-            } catch (error) {
-                console.error(`Error verifying ${number}:`, error);
-                resultTable.innerHTML += `
-                    <tr>
-                        <td>${number}</td>
-                        <td colspan="4" style="color: red;">Failed to check</td>
-                    </tr>
-                `;
+            if (!campaignData.numbers || campaignData.numbers.length === 0) {
+                resultTable.innerHTML = `<tr><td colspan="5" style="color: red;">No numbers found in the campaign.</td></tr>`;
+                return;
             }
+
+            resultTable.innerHTML = ""; // Clear loading message
+
+            // Loop through each number and verify it
+            for (let number of campaignData.numbers) {
+                await verifyNumber(number, resultTable);
+            }
+        } catch (error) {
+            console.error('Error fetching campaign numbers:', error);
+            resultTable.innerHTML = `<tr><td colspan="5" style="color: red;">Failed to fetch campaign numbers.</td></tr>`;
         }
+    }
+
+    async function verifyNumber(number, resultTable) {
+        try {
+            const verifyUrl = `https://api.numberverifier.com/api/validate`;
+
+            const response = await fetch(verifyUrl, {
+                method: 'POST',
+                headers: {
+                    'x-apikey': apiKey,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ number: number })
+            });
+
+            const data = await response.json();
+
+            let tMobileFlag = data.carrier.includes("T-Mobile") ? "🚩 Flagged" : "✅ Safe";
+            let verizonFlag = data.carrier.includes("Verizon") ? "🚩 Flagged" : "✅ Safe";
+            let attFlag = data.carrier.includes("AT&T") ? "🚩 Flagged" : "✅ Safe";
+
+            resultTable.innerHTML += `
+                <tr>
+                    <td>${data.number}</td>
+                    <td>${data.carrier}</td>
+                    <td>${tMobileFlag}</td>
+                    <td>${verizonFlag}</td>
+                    <td>${attFlag}</td>
+                </tr>
+            `;
+        } catch (error) {
+            console.error(`Error verifying ${number}:`, error);
+            resultTable.innerHTML += `
+                <tr>
+                    <td>${number}</td>
+                    <td colspan="4" style="color: red;">Failed to check</td>
+                </tr>
+            `;
+        }
+    }
     </script>
+
 </body>
 </html>
 
