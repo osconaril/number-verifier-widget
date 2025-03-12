@@ -63,42 +63,35 @@
     const apiKey = 'uETlnux9_qgrdnVE/InRMmUTC'; // Your API Key (Exposed in Frontend for Testing)
 
     async function fetchCampaignNumbers() {
-        const resultTable = document.getElementById('result');
-        resultTable.innerHTML = `<tr><td colspan="5">Loading numbers...</td></tr>`;
+    const resultTable = document.getElementById('result');
+    resultTable.innerHTML = `<tr><td colspan="5">Loading numbers...</td></tr>`;
 
-        try {
-            console.log("Fetching campaign numbers...");
+    try {
+        const response = await fetch(`https://number-verifier-proxy.corey-08a.workers.dev`);
 
-            const response = await fetch(`https://api.numberverifier.com/api/getnumbers`, {
-                method: 'GET',
-                headers: {
-                    'x-apikey': apiKey // API Key must be in the header
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-
-            const campaignData = await response.json();
-            console.log("Campaign API Response:", campaignData);
-
-            if (!campaignData.numbers || campaignData.numbers.length === 0) {
-                resultTable.innerHTML = `<tr><td colspan="5" style="color: red;">No numbers found in the campaign.</td></tr>`;
-                return;
-            }
-
-            resultTable.innerHTML = ""; // Clear loading message
-
-            // Loop through each number and verify it
-            for (let number of campaignData.numbers) {
-                await verifyNumber(number, resultTable);
-            }
-        } catch (error) {
-            console.error('Error fetching campaign numbers:', error);
-            resultTable.innerHTML = `<tr><td colspan="5" style="color: red;">Failed to fetch campaign numbers.</td></tr>`;
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
         }
+
+        const campaignData = await response.json();
+        console.log("Campaign API Response:", campaignData);
+
+        if (!campaignData.numbers || campaignData.numbers.length === 0) {
+            resultTable.innerHTML = `<tr><td colspan="5" style="color: red;">No numbers found in the campaign.</td></tr>`;
+            return;
+        }
+
+        resultTable.innerHTML = "";
+
+        for (let number of campaignData.numbers) {
+            await verifyNumber(number, resultTable);
+        }
+    } catch (error) {
+        console.error('Error fetching campaign numbers:', error);
+        resultTable.innerHTML = `<tr><td colspan="5" style="color: red;">Failed to fetch campaign numbers.</td></tr>`;
     }
+}
+
 
     async function verifyNumber(number, resultTable) {
         try {
