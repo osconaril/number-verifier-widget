@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Number Verifier Widget</title>
+    <title>Campaign Number Verifier</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,13 +15,15 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
+            max-width: 700px;
             margin: auto;
         }
-        input, button {
-            width: 100%;
+        button {
             padding: 10px;
-            margin: 10px 0;
+            margin-bottom: 10px;
+            width: 100%;
+            cursor: pointer;
+            font-size: 16px;
         }
         table {
             width: 100%;
@@ -34,55 +36,90 @@
             text-align: left;
         }
         th {
-            background-color: #f2f2f2;
+            background-color: #007BFF;
+            color: white;
         }
     </style>
 </head>
 <body>
     <div id="widget">
-        <h2>Phone Number Verifier</h2>
-        <input type="text" id="phoneNumber" placeholder="Enter phone number">
-        <button onclick="verifyNumber()">Verify</button>
-        <div id="result"></div>
+        <h2>Campaign Number Verifier</h2>
+        <button onclick="fetchCampaignNumbers()">Load Campaign Numbers & Verify</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>Number</th>
+                    <th>Carrier</th>
+                    <th>T-Mobile Flag</th>
+                    <th>Verizon Flag</th>
+                    <th>AT&T Flag</th>
+                </tr>
+            </thead>
+            <tbody id="result"></tbody>
+        </table>
     </div>
 
     <script>
-        async function verifyNumber() {
-            const phoneNumber = document.getElementById('phoneNumber').value.trim();
-            const accessKey = 'uETlnux9_qgrdnVE/InRMmUTC'; // Your API Key (Visible in Frontend)
-            const apiUrl = `https://api.numberverifier.com/api/validate?access_key=${accessKey}&number=${encodeURIComponent(phoneNumber)}`;
+        const apiKey = 'uETlnux9_qgrdnVE/InRMmUTC'; // API Key (Visible for testing)
 
-            if (!phoneNumber) {
-                alert('Please enter a phone number.');
-                return;
-            }
+        async function fetchCampaignNumbers() {
+            const resultTable = document.getElementById('result');
+            resultTable.innerHTML = `<tr><td colspan="5">Loading numbers...</td></tr>`;
 
             try {
-                const response = await fetch(apiUrl);
-                const data = await response.json();
+                // Step 1: Fetch numbers from the campaign API
+                const campaignResponse = await fetch(`https://api.numberverifier.com/api/getnumbers?access_key=${apiKey}`);
+                const campaignData = await campaignResponse.json();
 
-                if (data.valid) {
-                    document.getElementById('result').innerHTML = `
-                        <table>
-                            <tr><th>Number</th><td>${data.number}</td></tr>
-                            <tr><th>Local Format</th><td>${data.local_format}</td></tr>
-                            <tr><th>International Format</th><td>${data.international_format}</td></tr>
-                            <tr><th>Country</th><td>${data.country_name}</td></tr>
-                            <tr><th>Location</th><td>${data.location}</td></tr>
-                            <tr><th>Carrier</th><td>${data.carrier}</td></tr>
-                            <tr><th>Line Type</th><td>${data.line_type}</td></tr>
-                        </table>
-                    `;
-                } else {
-                    document.getElementById('result').innerHTML = '<p style="color: red;">Invalid phone number.</p>';
+                if (!campaignData.numbers || campaignData.numbers.length === 0) {
+                    resultTable.innerHTML = `<tr><td colspan="5" style="color: red;">No numbers found in the campaign.</td></tr>`;
+                    return;
+                }
+
+                resultTable.innerHTML = ""; // Clear loading message
+
+                // Step 2: Loop through each number and verify it
+                for (let number of campaignData.numbers) {
+                    await verifyNumber(number, resultTable);
                 }
             } catch (error) {
-                console.error('Error fetching data:', error);
-                document.getElementById('result').innerHTML = '<p style="color: red;">An error occurred while verifying the number.</p>';
+                console.error('Error fetching campaign numbers:', error);
+                resultTable.innerHTML = `<tr><td colspan="5" style="color: red;">Failed to fetch campaign numbers.</td></tr>`;
+            }
+        }
+
+        async function verifyNumber(number, resultTable) {
+            try {
+                const verifyUrl = `https://api.numberverifier.com/api/validate?access_key=${apiKey}&number=${encodeURIComponent(number)}`;
+                const response = await fetch(verifyUrl);
+                const data = await response.json();
+
+                let tMobileFlag = data.carrier.includes("T-Mobile") ? "🚩 Flagged" : "✅ Safe";
+                let verizonFlag = data.carrier.includes("Verizon") ? "🚩 Flagged" : "✅ Safe";
+                let attFlag = data.carrier.includes("AT&T") ? "🚩 Flagged" : "✅ Safe";
+
+                resultTable.innerHTML += `
+                    <tr>
+                        <td>${data.number}</td>
+                        <td>${data.carrier}</td>
+                        <td>${tMobileFlag}</td>
+                        <td>${verizonFlag}</td>
+                        <td>${attFlag}</td>
+                    </tr>
+                `;
+            } catch (error) {
+                console.error(`Error verifying ${number}:`, error);
+                resultTable.innerHTML += `
+                    <tr>
+                        <td>${number}</td>
+                        <td colspan="4" style="color: red;">Failed to check</td>
+                    </tr>
+                `;
             }
         }
     </script>
 </body>
 </html>
+
 
 
